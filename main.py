@@ -5,7 +5,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 
 import config
-from handlers import common
+from handlers import common, crypto_analyze
 
 
 async def main():
@@ -13,6 +13,7 @@ async def main():
     dp = Dispatcher()
 
     dp.include_router(common.router)
+    dp.include_router(crypto_analyze.router)
 
     await dp.start_polling(bot)
 
