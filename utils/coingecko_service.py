@@ -1,7 +1,21 @@
 from pycoingecko import CoinGeckoAPI
 from datetime import datetime, timezone
 import pandas as pd
+import numpy as np
 from pprint import pprint
+
+
+def format_number(number: float, decimals: int = 2) -> str:
+    """Форматирование числа с разделением разрядов"""
+    if number is None:
+        return "N/A"
+    if number >= 1_000_000_000:  # миллиарды
+        return f"{number/1_000_000_000:,.{decimals}f}B"
+    if number >= 1_000_000:  # миллионы
+        return f"{number/1_000_000:,.{decimals}f}M"
+    if number >= 1_000:  # тысячи
+        return f"{number:,.{decimals}f}"
+    return f"{number:.{decimals}f}"
 
 
 #pd.set_option('display.float_format', '{:.2f}'.format) # Два знака после запятой
@@ -53,6 +67,105 @@ def get_history_data(coin_id: str, currency: str = "usd", days: int = 60):
 
     return df
 
+
+def get_daily_summary(coin_id: str, currency: str = "usd"):
+    """Функция для краткого отчета за сутки"""
+    df = get_history_data(coin_id=coin_id, currency=currency, days=1)
+    if df is None or len(df) == 0:
+        return None
+
+    current_price = df["price"].iloc[-1]
+    min_price = df["price"].min()
+    max_price = df["price"].max()
+    total_volume = df["volume"].sum()
+
+    summary = {
+        "current_price": current_price,
+        "min_price": min_price,
+        "max_price": max_price,
+        "total_volume": total_volume,
+    }
+
+    return summary
+
+
+def calculate_price_change(df: pd.DataFrame) -> dict:
+    """Расчет изменения цены в процентах"""
+    if df is None or len(df) < 2:
+        return None
+    
+    first_price = df['price'].iloc[0]
+    last_price = df['price'].iloc[-1]
+    
+    price_change = ((last_price - first_price) / first_price) * 100
+    
+    return {
+        'price_change_percent': price_change,
+        'start_price': first_price,
+        'end_price': last_price
+    }
+
+def get_market_indicators(coin_id: str, currency: str = "usd", days: int = 1):
+    """Получение расширенных рыночных показателей"""
+    df = get_history_data(coin_id=coin_id, currency=currency, days=days)
+    if df is None or len(df) == 0:
+        return None
+        
+    # Базовые показатели
+    current_price = df["price"].iloc[-1]
+    avg_price = df["price"].mean()
+    price_std = df["price"].std()  # Стандартное отклонение цены
+    
+    # Объемы
+    avg_volume = df["volume"].mean()
+    max_volume = df["volume"].max()
+    
+    # Волатильность (на основе стандартного отклонения)
+    volatility = (price_std / avg_price) * 100
+    
+    # Изменение цены
+    price_changes = calculate_price_change(df)
+    
+    # Расчет простой скользящей средней (SMA)
+    sma = df["price"].rolling(window=min(len(df), 6)).mean().iloc[-1]
+    
+    return {
+        "current_price": current_price,
+        "average_price": avg_price,
+        "price_std": price_std,
+        "volatility_percent": volatility,
+        "average_volume": avg_volume,
+        "max_volume": max_volume,
+        "sma": sma,
+        "price_change": price_changes["price_change_percent"] if price_changes else None
+    }
+
+def get_price_alerts(coin_id: str, currency: str = "usd", volatility_threshold: float = 5.0) -> dict:
+    """Анализ цены и генерация торговых сигналов"""
+    indicators = get_market_indicators(coin_id, currency)
+    if indicators is None:
+        return None
+        
+    alerts = []
+    
+    # Проверка волатильности
+    if indicators["volatility_percent"] > volatility_threshold:
+        alerts.append(f"⚠️ Высокая волатильность: {indicators['volatility_percent']:.2f}%")
+    
+    # Анализ цены относительно SMA
+    if indicators["current_price"] > indicators["sma"]:
+        alerts.append("📈 Цена выше SMA - возможный восходящий тренд")
+    elif indicators["current_price"] < indicators["sma"]:
+        alerts.append("📉 Цена ниже SMA - возможный нисходящий тренд")
+    
+    # Анализ объема
+    if indicators["max_volume"] > indicators["average_volume"] * 2:
+        alerts.append("📊 Обнаружен высокий объем торгов")
+    
+    return {
+        "indicators": indicators,
+        "alerts": alerts
+    }
 
 if __name__ == "__main__":
     # price = get_current_price(coin_id="ethereum", currency="rub")
