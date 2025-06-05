@@ -1,11 +1,11 @@
 from aiogram import Router, F
-from aiogram.types import Message
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from utils.coingecko_service import (
-    get_current_price, 
-    get_history_data, 
-    get_daily_summary,
-    get_market_indicators,
-    get_price_alerts,
+    get_current_price_async, 
+    get_history_data_async, 
+    get_daily_summary_async,
+    get_market_indicators_async,
+    get_price_alerts_async,
     format_number
 )
 
@@ -24,7 +24,7 @@ async def get_price(message: Message):
 
     coin_id = parts[1].lower().strip()
 
-    price = get_current_price(coin_id)
+    price = await get_current_price_async(coin_id)
     if price is None:
         await message.reply(f"Монета с id {coin_id} не найдена")
         return
@@ -43,7 +43,7 @@ async def daily_summary(message: Message):
 
     coin_id = parts[1].lower().strip()
     
-    summary = get_daily_summary(coin_id)
+    summary = await get_daily_summary_async(coin_id)
     if summary is None:
         await message.reply(f"Не удалось получить данные для монеты {coin_id}")
         return
@@ -63,12 +63,21 @@ async def analyze_market(message: Message):
     
     parts = message.text.strip().split()
     if len(parts) < 2:
-        await message.reply("Введите команду в виде: /analyze bitcoin")
+        # Популярные монеты
+        popular = ["bitcoin", "ethereum", "solana", "dogecoin"]
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text=coin)] for coin in popular],
+            resize_keyboard=True
+        )
+        await message.reply(
+            "Выбери монету для анализа или введи своё название:",
+            reply_markup=keyboard
+        )
         return
 
     coin_id = parts[1].lower().strip()
     
-    indicators = get_market_indicators(coin_id)
+    indicators = await get_market_indicators_async(coin_id)
     if indicators is None:
         await message.reply(f"Не удалось получить данные для монеты {coin_id}")
         return
@@ -79,6 +88,20 @@ async def analyze_market(message: Message):
     response += f"📈 Изменение цены: {format_number(indicators['price_change'])}%\n"
     response += f"📊 Волатильность: {format_number(indicators['volatility_percent'])}%\n"
     response += f"💹 SMA: ${format_number(indicators['sma'])}\n"
+    response += f"💹 EMA: ${format_number(indicators['ema']) if indicators['ema'] is not None else 'N/A'}\n"
+    response += f"📈 RSI: {format_number(indicators['rsi']) if indicators['rsi'] is not None else 'N/A'}\n"
+    # Сигналы по RSI и EMA
+    signal = None
+    if indicators['rsi'] is not None and indicators['ema'] is not None:
+        if indicators['rsi'] < 30 and indicators['current_price'] > indicators['ema']:
+            signal = '🟢 Сигнал на покупку (RSI < 30 и цена > EMA)'
+        elif indicators['rsi'] > 70 and indicators['current_price'] < indicators['ema']:
+            signal = '🔴 Сигнал на продажу (RSI > 70 и цена < EMA)'
+        else:
+            signal = '⚪️ Явного сигнала нет (сидеть на заборе/наблюдать)'
+    else:
+        signal = '⚪️ Недостаточно данных для сигнала (RSI/EMA)'
+    response += f"\n{signal}\n"
     response += f"📊 Средний объем: ${format_number(indicators['average_volume'])}\n"
     response += f"📈 Максимальный объем: ${format_number(indicators['max_volume'])}"
     
@@ -96,7 +119,7 @@ async def price_alerts(message: Message):
 
     coin_id = parts[1].lower().strip()
     
-    analysis = get_price_alerts(coin_id)
+    analysis = await get_price_alerts_async(coin_id)
     if analysis is None:
         await message.reply(f"Не удалось получить данные для монеты {coin_id}")
         return

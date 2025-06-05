@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import pandas as pd
 import numpy as np
 from pprint import pprint
+import asyncio
 
 
 def format_number(number: float, decimals: int = 2) -> str:
@@ -105,6 +106,23 @@ def calculate_price_change(df: pd.DataFrame) -> dict:
         'end_price': last_price
     }
 
+def calculate_ema(prices: pd.Series, span: int = 14) -> float:
+    if prices is None or len(prices) < span:
+        return None
+    return prices.ewm(span=span, adjust=False).mean().iloc[-1]
+
+def calculate_rsi(prices: pd.Series, period: int = 14) -> float:
+    if prices is None or len(prices) < period + 1:
+        return None
+    delta = prices.diff()
+    gain = delta.where(delta > 0, 0.0)
+    loss = -delta.where(delta < 0, 0.0)
+    avg_gain = gain.rolling(window=period, min_periods=period).mean()
+    avg_loss = loss.rolling(window=period, min_periods=period).mean()
+    rs = avg_gain / avg_loss
+    rsi = 100 - (100 / (1 + rs))
+    return rsi.iloc[-1]
+
 def get_market_indicators(coin_id: str, currency: str = "usd", days: int = 1):
     """Получение расширенных рыночных показателей"""
     df = get_history_data(coin_id=coin_id, currency=currency, days=days)
@@ -129,6 +147,12 @@ def get_market_indicators(coin_id: str, currency: str = "usd", days: int = 1):
     # Расчет простой скользящей средней (SMA)
     sma = df["price"].rolling(window=min(len(df), 6)).mean().iloc[-1]
     
+    # Расчет EMA
+    ema = calculate_ema(df["price"], span=14)
+    
+    # Расчет RSI
+    rsi = calculate_rsi(df["price"], period=14)
+    
     return {
         "current_price": current_price,
         "average_price": avg_price,
@@ -137,6 +161,8 @@ def get_market_indicators(coin_id: str, currency: str = "usd", days: int = 1):
         "average_volume": avg_volume,
         "max_volume": max_volume,
         "sma": sma,
+        "ema": ema,
+        "rsi": rsi,
         "price_change": price_changes["price_change_percent"] if price_changes else None
     }
 
@@ -166,6 +192,26 @@ def get_price_alerts(coin_id: str, currency: str = "usd", volatility_threshold: 
         "indicators": indicators,
         "alerts": alerts
     }
+
+async def get_current_price_async(*args, **kwargs):
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, get_current_price, *args, **kwargs)
+
+async def get_history_data_async(*args, **kwargs):
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, get_history_data, *args, **kwargs)
+
+async def get_daily_summary_async(*args, **kwargs):
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, get_daily_summary, *args, **kwargs)
+
+async def get_market_indicators_async(*args, **kwargs):
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, get_market_indicators, *args, **kwargs)
+
+async def get_price_alerts_async(*args, **kwargs):
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, get_price_alerts, *args, **kwargs)
 
 if __name__ == "__main__":
     # price = get_current_price(coin_id="ethereum", currency="rub")
