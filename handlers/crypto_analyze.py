@@ -1,5 +1,6 @@
 from aiogram import Router, F
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message
+from keyboards.common import get_keyboard
 from utils.coingecko_service import (
     get_current_price_async, 
     get_history_data_async, 
@@ -19,19 +20,7 @@ async def get_price(message: Message):
 
     parts = message.text.strip().split()
     if len(parts) < 2:
-        popular = [
-            ("bitcoin", "₿"),
-            ("ethereum", "Ξ"),
-            ("solana", "◎"),
-            ("dogecoin", "Ð")
-        ]
-        keyboard = ReplyKeyboardMarkup(
-            keyboard=[
-                [KeyboardButton(text=f"/price {coin}") for coin, emoji in popular[i:i+2]]
-                for i in range(0, len(popular), 2)
-            ],
-            resize_keyboard=True
-        )
+        keyboard = get_keyboard("price")
         await message.reply(
             "Выбери монету для анализа или введи команду в формате /price [монета]",
             reply_markup=keyboard
@@ -54,19 +43,7 @@ async def daily_summary(message: Message):
     
     parts = message.text.strip().split()
     if len(parts) < 2:
-        popular = [
-            ("bitcoin", "₿"),
-            ("ethereum", "Ξ"),
-            ("solana", "◎"),
-            ("dogecoin", "Ð")
-        ]
-        keyboard = ReplyKeyboardMarkup(
-            keyboard=[
-                [KeyboardButton(text=f"/daily {coin}") for coin, emoji in popular[i:i+2]]
-                for i in range(0, len(popular), 2)
-            ],
-            resize_keyboard=True
-        )
+        keyboard = get_keyboard("daily")
         await message.reply(
             "Выбери монету для анализа или введи команду в формате /daily [монета]",
             reply_markup=keyboard
@@ -95,19 +72,7 @@ async def analyze_market(message: Message):
     
     parts = message.text.strip().split()
     if len(parts) < 2:
-        popular = [
-            ("bitcoin", "₿"),
-            ("ethereum", "Ξ"),
-            ("solana", "◎"),
-            ("dogecoin", "Ð")
-        ]
-        keyboard = ReplyKeyboardMarkup(
-            keyboard=[
-                [KeyboardButton(text=f"/analyze {coin}") for coin, emoji in popular[i:i+2]]
-                for i in range(0, len(popular), 2)
-            ],
-            resize_keyboard=True
-        )
+        keyboard = get_keyboard("analyze")
         await message.reply(
             "Выбери монету для анализа или введи команду в формате /analyze [монета]",
             reply_markup=keyboard
@@ -153,19 +118,7 @@ async def price_alerts(message: Message):
     
     parts = message.text.strip().split()
     if len(parts) < 2:
-        popular = [
-            ("bitcoin", "₿"),
-            ("ethereum", "Ξ"),
-            ("solana", "◎"),
-            ("dogecoin", "Ð")
-        ]
-        keyboard = ReplyKeyboardMarkup(
-            keyboard=[
-                [KeyboardButton(text=f"/alerts {coin}") for coin, emoji in popular[i:i+2]]
-                for i in range(0, len(popular), 2)
-            ],
-            resize_keyboard=True
-        )
+        keyboard = get_keyboard("alerts")
         await message.reply(
             "Выбери монету для анализа или введи команду в формате /alerts [монета]",
             reply_markup=keyboard
