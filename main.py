@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 import aiogram
 from aiogram import Bot, Dispatcher
@@ -7,6 +8,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 import config
 from handlers import common, crypto_analyze
 
+logging.basicConfig(level=logging.INFO)
 
 async def main():
     bot = Bot(token=config.TOKEN_TG)
